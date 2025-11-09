@@ -1,0 +1,53 @@
+server {
+    listen 80;
+    server_name portal.aditya-raman.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name portal.aditya-raman.com;
+
+    ssl_certificate     /etc/ssl/certs/fullchain.pem;
+    ssl_certificate_key /etc/ssl/private/privkey.pem;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # --- Security Headers ---
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options nosniff;
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+    # --- CORS: Only Mesh Gateway allowed to access ---
+    add_header Access-Control-Allow-Origin "https://mesh.aditya-raman.com";
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization";
+
+    # --- Frontend SPA Routing ---
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # --- 🔗 Secure Proxy to Mesh ---
+    location /mesh/health/ {
+        proxy_pass $MESH_URL/;
+        proxy_set_header Host "mesh.aditya-raman.com";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-API-KEY $MESH_API_KEY_HEALTH;
+    }
+
+    location /mesh/portal/ {
+        proxy_pass $MESH_URL/;
+        proxy_set_header Host "mesh.aditya-raman.com";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-API-KEY $MESH_API_KEY_PORTAL;
+    }
+
+    # Static file caching
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico)$ {
+        expires 30d;
+        access_log off;
+    }
+}

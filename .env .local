@@ -1,0 +1,10 @@
+# Health login
+VITE_HEALTH_PASS=change-me
+
+# API base
+VITE_API_BASE=https://mesh.aditya-raman.com
+
+# Keys for local dev only (⚠️ do not use in production builds)
+VITE_PORTAL_API_KEY=83997f873f4a566098f54d17e8cc16618268921298dbd98cfa7ed24cdd7ef500
+VITE_AGENT_HEALTH_KEY=e1c00a1b98a451ca55d23a5bde1a619a187d5747698d4345432eaf54911e3a93
+VITE_AGENT_IRIS_KEY=e895b415a2ddbcc20a110b720ac176184e5a20682e13c1fc7a43afdea3a535c9

@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body { background: white; }
+  .no-print { display: none !important; }
+  .cv-page { box-shadow: none !important; }
+}
