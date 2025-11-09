@@ -52,13 +52,15 @@ const HealthCoachCard = ({ rec }) => (
 
 export default function HealthProfile() {
 
-  // === Auth check ===
+  // === Auth check (TEMPORARILY COMMENTED OUT FOR DEBUGGING) ===
+  /*
   const token = localStorage.getItem("hp_token");
   useEffect(() => {
     if (!token || token !== import.meta.env.VITE_HEALTH_PASS) {
       window.location.href = "/signin";
     }
   }, [token]);
+  */
 
   // === State ===
   const [garmin, setGarmin] = useState<any>(null);
