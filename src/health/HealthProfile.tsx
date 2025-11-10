@@ -7,13 +7,13 @@ import toast from "react-hot-toast";
 // The proxy adds the required API key on the server side.
 
 const api = {
-  garmin: () => fetch(`/mesh/health/garmin/latest`).then((r) => r.json()),
-  weight: () => fetch(`/mesh/health/weight/latest`).then((r) => r.json()),
-  calories: () => fetch(`/mesh/health/calories/latest`).then((r) => r.json()),
-  recommendation: () => fetch(`/mesh/health/ai/recommendation`).then((r) => r.json()),
+  garmin: () => fetch(`/mcp/call/garmin/latest`).then((r) => r.json()),
+  weight: () => fetch(`/mcp/call/weight/latest`).then((r) => r.json()),
+  calories: () => fetch(`/mcp/call/calories/latest`).then((r) => r.json()),
+  recommendation: () => fetch(`/mcp/call/ai/recommendation`).then((r) => r.json()),
 
-  syncGarmin: () => fetch(`/mesh/health/sync/garmin`, { method: "POST" }),
-  syncNutrition: () => fetch(`/mesh/health/sync/nutrition`, { method: "POST" })
+  syncGarmin: () => fetch(`/mcp/call/sync/garmin`, { method: "POST" }),
+  syncNutrition: () => fetch(`/mcp/call/sync/nutrition`, { method: "POST" })
 };
 
 // --- Sparkline Chart ---

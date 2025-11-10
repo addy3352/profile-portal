@@ -31,18 +31,11 @@ server {
     }
 
     # --- 🔗 Secure Proxy to Mesh ---
-    location /mesh/health/ {
-        proxy_pass $MESH_URL/;
+    location /mcp/call/ {
+        proxy_pass $MESH_URL/mcp/call/;
         proxy_set_header Host "mesh.aditya-raman.com";
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-API-KEY $MESH_API_KEY_HEALTH;
-    }
-
-    location /mesh/portal/ {
-        proxy_pass $MESH_URL/;
-        proxy_set_header Host "mesh.aditya-raman.com";
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-API-KEY $MESH_API_KEY_PORTAL;
     }
 
     # Static file caching
