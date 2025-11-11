@@ -1,3 +1,9 @@
+map $http_origin $cors_header {
+    default "";
+    "https://portal.aditya-raman.com" $http_origin;
+    "https://mesh.aditya-raman.com" $http_origin;
+}
+
 server {
     listen 80;
     server_name portal.aditya-raman.com;
@@ -21,7 +27,7 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin";
 
     # --- CORS: Only Mesh Gateway allowed to access ---
-    add_header Access-Control-Allow-Origin "https://mesh.aditya-raman.com";
+    add_header Access-Control-Allow-Origin $cors_header;
     add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
     add_header Access-Control-Allow-Headers "Content-Type, Authorization";
 
@@ -30,18 +36,30 @@ server {
         try_files $uri /index.html;
     }
 
-    # --- 🔗 Secure Proxy to Mesh ---
+    # =====================================================
+    #  🚀 Proxy to MCP Mesh Droplet
+    # =====================================================
+    # Must come BEFORE location / block, and keep trailing slashes aligned
     location /mcp/call/ {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-        add_header Pragma "no-cache";
-        add_header Expires 0;
-        add_header Access-Control-Allow-Origin "https://mesh.aditya-raman.com" always;
-        proxy_pass https://mesh.aditya-raman.com;
-        proxy_set_header Host "mesh.aditya-raman.com";
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass https://mesh.aditya-raman.com/mcp/call/;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+
+        proxy_set_header Host mesh.aditya-raman.com;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-API-KEY $MESH_API_KEY_HEALTH;
+
+        # Optionally inject role headers for internal API routing
+        # proxy_set_header X-Client-Id "portal-health-ui";
+        # proxy_set_header X-Client-Role "agent-health";
+
+        # Timeout & buffering for long-running AI requests
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        send_timeout 300s;
     }
 
     # Static file caching
