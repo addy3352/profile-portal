@@ -31,7 +31,14 @@ server {
     add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
     add_header Access-Control-Allow-Headers "Content-Type, Authorization";
 
-    # --- Frontend SPA Routing ---
+    location /mcp/test-proxy/ {
+        add_header X-Proxy-Test "Success";
+        return 200 "Proxy test successful!";
+    }
+
+    # =====================================================
+    #  🌐 React SPA Routing (Fallback to index.html)
+    # =====================================================
     location / {
         try_files $uri /index.html;
     }
