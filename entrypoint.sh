@@ -1,13 +1,23 @@
 #!/bin/sh
-# This script substitutes environment variables in the nginx template and starts the server.
+set -e
 
-# We specify the variables to substitute to avoid replacing other nginx variables like $host.
-envsubst '${MESH_URL},${MESH_API_KEY_HEALTH},${MESH_API_KEY_PORTAL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+# --- Log for visibility
+echo "[entrypoint] Starting Nginx with template substitution..."
 
-# Print the generated config for debugging purposes
-echo "--- Generated nginx.conf ---"
-cat /etc/nginx/conf.d/default.conf
-echo "--------------------------"
+# Ensure cert paths exist (DO injects SSL via proxy, but we keep these consistent)
+mkdir -p /etc/ssl/certs /etc/ssl/private
 
-# Start nginx in the foreground
-nginx -g 'daemon off;'
+# Replace environment variables in the nginx template
+if [ -f /etc/nginx/conf.d/default.conf.template ]; then
+  echo "[entrypoint] Applying nginx.conf.template..."
+  envsubst '$MESH_API_KEY_HEALTH' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+else
+  echo "[entrypoint] WARNING: Template not found!"
+fi
+
+# Verify config syntax before starting
+nginx -t
+
+# Launch nginx in the foreground (required for DO container runtime)
+echo "[entrypoint] Starting nginx..."
+exec nginx -g 'daemon off;'
