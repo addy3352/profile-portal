@@ -35,9 +35,12 @@ server {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
         add_header Pragma "no-cache";
         add_header Expires 0;
-        proxy_pass https://mesh.aditya-raman.com/;
+        add_header Access-Control-Allow-Origin "https://mesh.aditya-raman.com" always;
+        proxy_pass https://mesh.aditya-raman.com;
         proxy_set_header Host "mesh.aditya-raman.com";
         proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-API-KEY $MESH_API_KEY_HEALTH;
     }
 
