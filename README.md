@@ -12,3 +12,6 @@ npm run dev
 ## Docker
 docker build -t profile-portal:latest .
 docker run -p 8080:80 profile-portal:latest
+
+
+changing 
