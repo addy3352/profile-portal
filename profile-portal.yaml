@@ -1,0 +1,94 @@
+name: profile-portal
+region: blr
+
+domains:
+- domain: portal.aditya-raman.com
+  type: PRIMARY
+
+features:
+- buildpack-stack=ubuntu-22
+
+# Global environment variables available to all components
+envs:
+- key: VITE_API_BASE
+  scope: RUN_AND_BUILD_TIME
+  value: https://mesh.aditya-raman.com
+- key: MESH_API_KEY_HEALTH
+  scope: RUN_AND_BUILD_TIME
+  type: SECRET
+  value: EV[1:Yv5EvBUveyzAkS55CdsnSPis3a5hQd0i:svyzAKAo+abaS6AC6x+Aiw8+uh3vzlrKAhexVqNdqEX2HJPEi2w1l6Y9f3KBOa3z96ad1dddAVqIrjA/gIszKUJ3+0RWKul6VbdrV63J9Uc=]
+- key: PORTAL_API_KEY # Moved to global to be accessible by proxy
+  scope: RUN_AND_BUILD_TIME
+  type: SECRET
+  value: EV[1:s9hSvvxIsJZuAB4yds2AvT6dQqRJOQpm:tndkpWh4HTqrSAysXh7vQjIQtInheEu0GiPKcorT+awSpi0jPOr2vy5gS6xIRAd7T9QHrqMb3VFG9IplNjIeCl6GMYTlgjXGcMQLEyp5tWw=]
+- key: AGENT_HEALTH_KEY
+  scope: RUN_AND_BUILD_TIME
+  type: SECRET
+  value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKHHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=]
+
+# ==========================================
+# ROUTING RULES (Order matters!)
+# ==========================================
+ingress:
+  rules:
+  # Rule 1: Proxy /health to the proxy service
+  - component:
+      name: mesh-proxy
+      preserve_path_prefix: true # Sends /health... to the proxy
+    match:
+      path:
+        prefix: /health
+
+  # Rule 2: Proxy /mcp/* to the proxy service
+  - component:
+      name: mesh-proxy
+      preserve_path_prefix: true # Sends /mcp/call/foo to the proxy
+    match:
+      path:
+        prefix: /mcp/
+
+  # Rule 3: All other traffic is proxied
+  - component:
+      name: mesh-proxy
+    match:
+      path:
+        prefix: /
+
+# ==========================================
+# COMPONENTS
+# ==========================================
+
+# A dedicated service to proxy API calls to the external mesh API
+services:
+- name: mesh-proxy
+  http_port: 80
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  # envs are inherited from the global section
+  dockerfile_path: proxy/Dockerfile.proxy
+  source_dir: .
+
+# The React frontend application
+static_sites:
+- name: profile-ui
+  build_command: npm ci && npm run build
+  output_dir: dist
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: addy3352/profile-portal
+  envs:
+  - key: VITE_HEALTH_PASS
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:CrLu1xz1jFu0Y8Y1FxqQ9SLzfH+cmH+8:dB63eDYtjJiyBXjFJ61RIMQIwbbQIB5LHkLd5mIJVMtuAthdC3/9]
+  - key: VITE_MCP_URL
+    scope: BUILD_TIME
+    value: /mcp # Use relative path to go through the proxy
+  - key: NODE_VERSION
+    scope: BUILD_TIME
+    value: "20"
+  - key: AGENT_IRIS_KEY
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:D2UtVYZBN1Sa3uNT2ytq4+W5XpG7V4W4:9zEnRmBG2cWEfYa+uXUophEgQtQe2NuxxCXJnHceDgTqqcR/caY4+pirNRtNGU/9Hi0M44MH5+ptb489AFch0QCaS6V0PCEPJWu8ZPxZ0Lo=]
