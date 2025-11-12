@@ -5,17 +5,8 @@ map $http_origin $cors_header {
 }
 
 server {
-    listen 80;
+    listen 8080;
     server_name portal.aditya-raman.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name portal.aditya-raman.com;
-
-    ssl_certificate     /etc/ssl/certs/fullchain.pem;
-    ssl_certificate_key /etc/ssl/private/privkey.pem;
 
     root /usr/share/nginx/html;
     index index.html;
@@ -30,11 +21,6 @@ server {
     add_header Access-Control-Allow-Origin $cors_header;
     add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
     add_header Access-Control-Allow-Headers "Content-Type, Authorization";
-
-    location /mcp/test-proxy/ {
-        add_header X-Proxy-Test "Success";
-        return 200 "Proxy test successful!";
-    }
 
     # =====================================================
     #  🌐 React SPA Routing (Fallback to index.html)
