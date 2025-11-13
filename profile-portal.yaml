@@ -67,8 +67,8 @@ services:
   envs:
   - key: API_KEY
     type: SECRET # AGENT_HEALTH_KEY
-  dockerfile_path: Dockerfile.proxy
-  source_dir: proxy # Corrected from /proxy
+  dockerfile_path: proxy/Dockerfile.proxy
+  source_dir: .
   github:
     branch: main
     deploy_on_push: true
