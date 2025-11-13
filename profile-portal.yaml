@@ -17,7 +17,7 @@ envs:
 - key: AGENT_HEALTH_KEY
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKKHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=]
+  value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=]
 
 features:
 - buildpack-stack=ubuntu-22
