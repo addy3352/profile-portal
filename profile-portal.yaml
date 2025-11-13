@@ -67,6 +67,10 @@ services:
   # envs are inherited from the global section
   dockerfile_path: proxy/Dockerfile.proxy
   source_dir: .
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: addy3352/profile-portal
 
 # The React frontend application
 static_sites:
