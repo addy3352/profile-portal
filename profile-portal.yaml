@@ -9,15 +9,15 @@ envs:
 - key: VITE_HEALTH_PASS
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:4WIMkbpVTHRWfSRvlcSApXDo/fmnxKra:xg5NR1echBcn33BwANv82M836R6DD0vrTT/K9wWphbmjh67QiA==]
+  value: EV[1:Q/FfPWJqYGAmOWAl7IN0UofidCxFvRj7:VdwuL9EvZYlDLCXzETw3JskLiKnSJzAVXYJYq3APuIqelIfcfsEF]
 - key: MESH_API_KEY_HEALTH
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:Yv5EvBUveyzAkS55CdsnSPis3a5hQd0i:svyzAKAo+abaS6AC6x+Aiw8+uh3vzlrKAhexVqNdqEX2HJPEi2w1l6Y9f3KBOa3z96ad1dddAVqIrjA/gIszKUJ3+0RWKul6VbdrV63J9Uc=]
+  value: EV[1:4IxpfR3h5rQxGKZqH+tnjEhtcYVlVBSj:dfUlI1RY0ahwEHLWh3ivok/cpKpt6U3B0JT1slOYdtFG2sguqCv8Mtx22qtP6XEy3jdJrD7gGw+KNfgyH/NH1voAF2bPOWWigAAhHwlqgOs=]
 - key: AGENT_HEALTH_KEY
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=]
+  value: EV[1:DqaK81Ef642BRgUtKOuf9G7hAAHtfmlr:AmQ/QPhFAuJpRMvUXFijonFDQLUznvCOYPSy8Cq5G83OxkbrC6zz21qWRwop6zQN9dd+CmZTjKFHwDsy8u8u81WOjxShl9aObHjvoYg3weqh0=]
 
 features:
 - buildpack-stack=ubuntu-22
@@ -70,7 +70,7 @@ services:
   envs:
   - key: API_KEY
     type: SECRET
-    value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=] # AGENT_HEALTH_KEY
+    value: EV[1:DqaK81Ef642BRgUtKOuf9G7hAAHtfmlr:AmQ/QPhFAuJpRMvUXFijonFDQLUznvCOYPSy8Cq5G83OxkbrC6zz21qWRwop6zQN9dd+CmZTjKFHwDsy8u8u81WOjxShl9aObHjvoYg3weqh0=] # AGENT_HEALTH_KEY
   dockerfile_path: Dockerfile.proxy
   source_dir: proxy # Corrected from /proxy
   github:
@@ -102,12 +102,20 @@ static_sites:
   - key: PORTAL_API_KEY
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:s9hSvvxIsJZuAB4yds2AvT6dQqRJOQpm:tndkpWh4HTqrSAysXh7vQjIQtInheEu0GiPKcorT+awSpi0jPOr2vy5gS6xIRAd7T7QHrMb3VFG9IplNjIeCl6GMYTlgjXGcMQLEyp5tWw=]
+    value: EV[1:fXnz3D0PlxPizYYwf4HD/On6uapbKr8s:pZ7IYd5N6xTQW8j96+wk3uy1vZUT5N5tKmdJV0UNmy+CZmRVpv3il+oxJLlgMbZABbZlXTusE2n217a3nvXTZxo/qGv9NYCLbRxPhmqvU7I=]
   - key: AGENT_HEALTH_KEY
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=]
+    value: EV[1:0rhZCCJGKXXdhqF0Iagdjai9FPvrxia+:uJQtD+BYOVAhhWqeaBGFr8Tp2xuGDDpj3xqSyEcpRO1cb2xEHE/1OxnABQSG2fMY/jMc9MpY2pTsHe1fEAbmv2j0kLPQjNjpF8uDH8M55Mk=]
   - key: AGENT_IRIS_KEY
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:D2UtVYZBN1Sa3uNT2ytq4+W5XpG7V4W4:9zEnRmBG2cWEfYa+uXUophEgQtQe2NuxxCXJnHceDgTqqcR/caY4+pirNRtNGU/9Hi0M44MH5+ptb489AFch0QCaS6V0PCEPJWu8ZPxZ0Lo=]
+    value: EV[1:J4F32k3vEiknwGTTnnuu61791ze80dmy:OtU622kqVRI3gbfvpuV9Sz8LRypknEnHPfIGpiZi7WzjYnzZceohiSa9u6QZQGweez+GlPLAFBMRgOJ3XsgyzvRuzCmIr5+DQmOkZiZ6d2qHY4gfYCWkqKEDunRTg7Q=]
+  - key: MESH_API_KEY_HEALTH
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:o7kcXkC/WHSE6Vxk44cEUO1KnCt72oA4:LljCoIaAgMGHYwRjRJkz+TbBQ8DuMuh7stBjIXJ7ayGdc/Vn4COXw0YT1rt+D44P9UQdMbskocdTjq2cy9NVyXO6thlCQ5i+mFmsM2/e9rNgiM5df+PJ+f7MJxmAC6f/3I0q2w==]
+  - key: VITE_HEALTH_PASS
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:jEd0Kpf5+xHLG8ZH+YqK9DPjN0RRMgAK:mOUA+N3X1Iq53I9JibVhVANSPhb/strjU3NX0/YobHvdBNABHvqk]
