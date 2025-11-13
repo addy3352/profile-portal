@@ -1,82 +1,89 @@
-name: profile-portal
-region: blr
-
 domains:
 - domain: portal.aditya-raman.com
   type: PRIMARY
 
-features:
-- buildpack-stack=ubuntu-22
-
-# Global environment variables available to all components
 envs:
 - key: VITE_API_BASE
   scope: RUN_AND_BUILD_TIME
   value: https://mesh.aditya-raman.com
+- key: VITE_HEALTH_PASS
+  scope: RUN_AND_BUILD_TIME
+  type: SECRET
+  value: EV[1:4WIMkbpVTHRWfSRvlcSApXDo/fmnxKra:xg5NR1echBcn33BwANv82M836R6DD0vrTT/K9wWphbmjh67QiA==]
 - key: MESH_API_KEY_HEALTH
   scope: RUN_AND_BUILD_TIME
   type: SECRET
   value: EV[1:Yv5EvBUveyzAkS55CdsnSPis3a5hQd0i:svyzAKAo+abaS6AC6x+Aiw8+uh3vzlrKAhexVqNdqEX2HJPEi2w1l6Y9f3KBOa3z96ad1dddAVqIrjA/gIszKUJ3+0RWKul6VbdrV63J9Uc=]
-- key: PORTAL_API_KEY # Moved to global to be accessible by proxy
-  scope: RUN_AND_BUILD_TIME
-  type: SECRET
-  value: EV[1:s9hSvvxIsJZuAB4yds2AvT6dQqRJOQpm:tndkpWh4HTqrSAysXh7vQjIQtInheEu0GiPKcorT+awSpi0jPOr2vy5gS6xIRAd7T9QHrqMb3VFG9IplNjIeCl6GMYTlgjXGcMQLEyp5tWw=]
 - key: AGENT_HEALTH_KEY
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKHHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=]
+  value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKKHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=]
+
+features:
+- buildpack-stack=ubuntu-22
 
 # ==========================================
-# ROUTING RULES (Order matters!)
+# ROUTING RULES (Order matters! Most specific first)
 # ==========================================
 ingress:
   rules:
-  # Rule 1: Proxy /health to the proxy service
+  # Rule 1: Proxy /mcp/* to mesh server (MUST come first - most specific)
   - component:
       name: mesh-proxy
-      preserve_path_prefix: true # Sends /health... to the proxy
+      preserve_path_prefix: true
     match:
       path:
-        prefix: /health
-
-  # Rule 2: Proxy /mcp/* to the proxy service
+        prefix: /mcp
+    cors:
+      allow_origins:
+      - exact: https://portal.aditya-raman.com
+      allow_methods:
+      - GET
+      - POST
+      - OPTIONS
+      allow_headers:
+      - Content-Type
+      - Authorization
+      - X-API-KEY
+      
+  # Rule 2: Serve static site for everything else (catch-all - least specific)
   - component:
-      name: mesh-proxy
-      preserve_path_prefix: true # Sends /mcp/call/foo to the proxy
-    match:
-      path:
-        prefix: /mcp/
-
-  # Rule 3: All other traffic is proxied
-  - component:
-      name: mesh-proxy
+      name: profile-ui
+      preserve_path_prefix: true
     match:
       path:
         prefix: /
+
+name: profile-portal
+region: blr
 
 # ==========================================
 # COMPONENTS
 # ==========================================
 
-# A dedicated service to proxy API calls to the external mesh API
+# Proxy component for mesh API
 services:
 - name: mesh-proxy
   http_port: 80
   instance_count: 1
   instance_size_slug: basic-xxs
-  # envs are inherited from the global section
-  dockerfile_path: proxy/Dockerfile.proxy
-  source_dir: .
+  envs:
+  - key: API_KEY
+    type: SECRET
+    value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKKHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=] # AGENT_HEALTH_KEY
+  dockerfile_path: Dockerfile.proxy
+  source_dir: proxy # Corrected from /proxy
   github:
     branch: main
     deploy_on_push: true
     repo: addy3352/profile-portal
 
-# The React frontend application
+# Static site component (your React app)
 static_sites:
 - name: profile-ui
   build_command: npm ci && npm run build
   output_dir: dist
+  source_dir: /
   github:
     branch: main
     deploy_on_push: true
@@ -88,10 +95,18 @@ static_sites:
     value: EV[1:CrLu1xz1jFu0Y8Y1FxqQ9SLzfH+cmH+8:dB63eDYtjJiyBXjFJ61RIMQIwbbQIB5LHkLd5mIJVMtuAthdC3/9]
   - key: VITE_MCP_URL
     scope: BUILD_TIME
-    value: /mcp # Use relative path to go through the proxy
+    value: /mcp
   - key: NODE_VERSION
     scope: BUILD_TIME
     value: "20"
+  - key: PORTAL_API_KEY
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:s9hSvvxIsJZuAB4yds2AvT6dQqRJOQpm:tndkpWh4HTqrSAysXh7vQjIQtInheEu0GiPKcorT+awSpi0jPOr2vy5gS6xIRAd7T7QHrMb3VFG9IplNjIeCl6GMYTlgjXGcMQLEyp5tWw=]
+  - key: AGENT_HEALTH_KEY
+    scope: BUILD_TIME
+    type: SECRET
+    value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=]
   - key: AGENT_IRIS_KEY
     scope: BUILD_TIME
     type: SECRET
