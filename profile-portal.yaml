@@ -9,15 +9,12 @@ envs:
 - key: VITE_HEALTH_PASS
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:Q/FfPWJqYGAmOWAl7IN0UofidCxFvRj7:VdwuL9EvZYlDLCXzETw3JskLiKnSJzAVXYJYq3APuIqelIfcfsEF]
 - key: MESH_API_KEY_HEALTH
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:4IxpfR3h5rQxGKZqH+tnjEhtcYVlVBSj:dfUlI1RY0ahwEHLWh3ivok/cpKpt6U3B0JT1slOYdtFG2sguqCv8Mtx22qtP6XEy3jdJrD7gGw+KNfgyH/NH1voAF2bPOWWigAAhHwlqgOs=]
 - key: AGENT_HEALTH_KEY
   scope: RUN_AND_BUILD_TIME
   type: SECRET
-  value: EV[1:DqaK81Ef642BRgUtKOuf9G7hAAHtfmlr:AmQ/QPhFAuJpRMvUXFijonFDQLUznvCOYPSy8Cq5G83OxkbrC6zz21qWRwop6zQN9dd+CmZTjKFHwDsy8u8u81WOjxShl9aObHjvoYg3weqh0=]
 
 features:
 - buildpack-stack=ubuntu-22
@@ -69,8 +66,7 @@ services:
   instance_size_slug: basic-xxs
   envs:
   - key: API_KEY
-    type: SECRET
-    value: EV[1:DqaK81Ef642BRgUtKOuf9G7hAAHtfmlr:AmQ/QPhFAuJpRMvUXFijonFDQLUznvCOYPSy8Cq5G83OxkbrC6zz21qWRwop6zQN9dd+CmZTjKFHwDsy8u8u81WOjxShl9aObHjvoYg3weqh0=] # AGENT_HEALTH_KEY
+    type: SECRET # AGENT_HEALTH_KEY
   dockerfile_path: Dockerfile.proxy
   source_dir: proxy # Corrected from /proxy
   github:
@@ -92,7 +88,6 @@ static_sites:
   - key: VITE_HEALTH_PASS
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:CrLu1xz1jFu0Y8Y1FxqQ9SLzfH+cmH+8:dB63eDYtjJiyBXjFJ61RIMQIwbbQIB5LHkLd5mIJVMtuAthdC3/9]
   - key: VITE_MCP_URL
     scope: BUILD_TIME
     value: /mcp
@@ -103,16 +98,12 @@ static_sites:
   - key: AGENT_HEALTH_KEY
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:0rhZCCJGKXXdhqF0Iagdjai9FPvrxia+:uJQtD+BYOVAhhWqeaBGFr8Tp2xuGDDpj3xqSyEcpRO1cb2xEHE/1OxnABQSG2fMY/jMc9MpY2pTsHe1fEAbmv2j0kLPQjNjpF8uDH8M55Mk=]
   - key: AGENT_IRIS_KEY
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:J4F32k3vEiknwGTTnnuu61791ze80dmy:OtU622kqVRI3gbfvpuV9Sz8LRypknEnHPfIGpiZi7WzjYnzZceohiSa9u6QZQGweez+GlPLAFBMRgOJ3XsgyzvRuzCmIr5+DQmOkZiZ6d2qHY4gfYCWkqKEDunRTg7Q=]
   - key: MESH_API_KEY_HEALTH
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:o7kcXkC/WHSE6Vxk44cEUO1KnCt72oA4:LljCoIaAgMGHYwRjRJkz+TbBQ8DuMuh7stBjIXJ7ayGdc/Vn4COXw0YT1rt+D44P9UQdMbskocdTjq2cy9NVyXO6thlCQ5i+mFmsM2/e9rNgiM5df+PJ+f7MJxmAC6f/3I0q2w==]
   - key: VITE_HEALTH_PASS
     scope: BUILD_TIME
     type: SECRET
-    value: EV[1:jEd0Kpf5+xHLG8ZH+YqK9DPjN0RRMgAK:mOUA+N3X1Iq53I9JibVhVANSPhb/strjU3NX0/YobHvdBNABHvqk]
