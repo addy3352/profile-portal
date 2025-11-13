@@ -65,10 +65,10 @@ services:
   instance_count: 1
   instance_size_slug: basic-xxs
   envs:
-  - key: API_KEY
-    type: SECRET # AGENT_HEALTH_KEY
-  dockerfile_path: Dockerfile.proxy
-  source_dir: proxy
+  - key: AGENT_HEALTH_KEY
+    type: SECRET
+  dockerfile_path: proxy/Dockerfile.proxy
+  source_dir: .
   github:
     branch: main
     deploy_on_push: true
