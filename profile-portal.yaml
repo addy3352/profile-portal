@@ -70,7 +70,7 @@ services:
   envs:
   - key: API_KEY
     type: SECRET
-    value: EV[1:hQp4kkfy0s24Acdfoex2T4bdR1xrwOg9:Jl77lf/0hUILXN66CLngFgpcYOKKHeIwwSdxW33YXnzTfsprqek6WYKzd5g7+6vI1nUS3eNG2glj+64CTE1OKxE+/5JMaNRzkns4dahIIpA=] # AGENT_HEALTH_KEY
+    value: EV[1:yaUpXhMXHyVHrlBiThOBnUCkikBNGuHg:2JJSpsOEmykrgObJy/w/FZDyVYuKipnc4wSQadz169nYnV2Pp+a7HhG+noISZZw/rgrlBYftMxdnkHfPiN6VYZ9JtTtuTEyinpkySqGVr+E=] # AGENT_HEALTH_KEY
   dockerfile_path: Dockerfile.proxy
   source_dir: proxy # Corrected from /proxy
   github:
