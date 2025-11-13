@@ -99,10 +99,7 @@ static_sites:
   - key: NODE_VERSION
     scope: BUILD_TIME
     value: "20"
-  - key: PORTAL_API_KEY
-    scope: BUILD_TIME
-    type: SECRET
-    value: EV[1:fXnz3D0PlxPizYYwf4HD/On6uapbKr8s:pZ7IYd5N6xTQW8j96+wk3uy1vZUT5N5tKmdJV0UNmy+CZmRVpv3il+oxJLlgMbZABbZlXTusE2n217a3nvXTZxo/qGv9NYCLbRxPhmqvU7I=]
+
   - key: AGENT_HEALTH_KEY
     scope: BUILD_TIME
     type: SECRET
