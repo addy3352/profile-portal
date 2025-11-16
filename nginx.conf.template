@@ -1,0 +1,59 @@
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Security headers
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options nosniff;
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+    # ==========================================
+    # API Proxy to Mesh Server
+    # ==========================================
+    location /mcp/ {
+        # Add a resolver for external domain lookup (crucial for Nginx in Docker)
+        resolver 8.8.8.8; # Using Google's public DNS
+
+        # Proxy to the full backend URL, passing the original request URI
+        proxy_pass https://mesh.aditya-raman.com$request_uri;
+        
+        # Debug headers to verify proxy destination and API key
+        add_header X-Debug-Upstream "https://mesh.aditya-raman.com$request_uri" always;
+        add_header X-Debug-API-Key "$MESH_API_KEY" always;
+        
+        proxy_ssl_server_name on;
+        proxy_ssl_protocols TLSv1.2 TLSv1.3;
+        
+        # Inject API key server-side
+        proxy_set_header X-API-KEY $MESH_API_KEY;
+        
+        # Standard proxy headers
+        proxy_set_header Host mesh.aditya-raman.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeouts for long-running requests
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    # ==========================================
+    # React SPA Routing (Fallback)
+    # ==========================================
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Static file caching
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+}

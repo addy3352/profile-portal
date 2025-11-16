@@ -1,0 +1,37 @@
+domains:
+- domain: portal.aditya-raman.com
+  type: PRIMARY
+
+features:
+- buildpack-stack=ubuntu-22
+
+name: profile-portal
+region: blr
+
+# ==========================================
+# Single Service Component (React + Nginx)
+# ==========================================
+services:
+- name: profile-portal
+  image:
+    registry_type: DOCKER_HUB
+    registry: addy3352
+    repository: profile
+    tag: latest
+  
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  
+  # Add this routes section to handle all traffic
+  routes:
+  - path: /
+  
+  # Environment variables (set via Dashboard)
+  envs:
+  - key: MESH_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  
+  health_check:
+    http_path: /

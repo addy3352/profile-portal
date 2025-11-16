@@ -3,21 +3,51 @@ import { ResponsiveContainer, LineChart, Line } from "recharts";
 import toast from "react-hot-toast";
 
 // --- Mesh API Helpers ---
-// Calls are now routed through the Nginx proxy defined in nginx.conf.template
-// The proxy adds the required API key on the server side.
+// Enhanced fetch to include logging, error handling, and no-caching.
+const fetchWithLogs = async (url: string, options: RequestInit = {}) => {
+  const finalOptions = { ...options, cache: "no-store" as const };
+  console.log(`[API] Fetching: ${url}`, finalOptions);
 
-const api = {
-  garmin: () => fetch(`/mcp/call/garmin/latest`, { method: "POST" }).then((r) => r.json()),
-  weight: () => fetch(`/mcp/call/weight/latest`).then((r) => r.json()),
-  calories: () => fetch(`/mcp/call/calories/latest`).then((r) => r.json()),
-  recommendation: () => fetch(`/mcp/call/ai/recommendation`, { method: "POST" }).then((r) => r.json()),
+  try {
+    const response = await fetch(url, finalOptions);
+    console.log(`[API] Response from ${url}: ${response.status} ${response.statusText}`);
 
-  syncGarmin: () => fetch(`/mcp/call/sync/garmin`, { method: "POST" }),
-  syncNutrition: () => fetch(`/mcp/call/sync/nutrition`, { method: "POST" })
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API] Error on ${url}:`, errorText);
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    if (response.status === 204) { // No Content
+      console.log(`[API] No content from ${url}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[API] Data from ${url}:`, data);
+    return data;
+  } catch (error) {
+    console.error(`[API] Network or parsing error on ${url}:`, error);
+    throw error;
+  }
 };
 
+const api = {
+  garmin: () => fetchWithLogs(`/mcp/call/garmin/latest`, { method: "POST" }),
+  weight: () => fetchWithLogs(`/mcp/call/weight/latest`),
+  calories: () => fetchWithLogs(`/mcp/call/calories/latest`),
+  recommendation: () => fetchWithLogs(`/mcp/call/ai/recommendation`, { method: "POST" }),
+  syncGarmin: () => fetchWithLogs(`/mcp/call/sync/garmin`, { method: "POST" }),
+  syncNutrition: () => fetchWithLogs(`/mcp/call/sync/nutrition`, { method: "POST" })
+};
+
+
 // --- Sparkline Chart ---
-const Sparkline = ({ data, color }) => (
+interface SparklineProps {
+  data: any[];
+  color: string;
+}
+const Sparkline = ({ data, color }: SparklineProps) => (
   <div className="h-12">
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data}>
@@ -34,7 +64,12 @@ const Sparkline = ({ data, color }) => (
 );
 
 // --- Mini Metric Card ---
-const MiniMetric = ({ title, value, trend }) => (
+interface MiniMetricProps {
+  title: string;
+  value: React.ReactNode;
+  trend: any[];
+}
+const MiniMetric = ({ title, value, trend }: MiniMetricProps) => (
   <div className="bg-white rounded-xl shadow-sm p-2">
     <div className="text-[11px] text-slate-600">{title}</div>
     <div className="text-sm font-semibold text-slate-900">{value ?? "--"}</div>
@@ -43,7 +78,10 @@ const MiniMetric = ({ title, value, trend }) => (
 );
 
 // --- Agent-Health Card ---
-const HealthCoachCard = ({ rec }) => (
+interface HealthCoachCardProps {
+  rec: React.ReactNode;
+}
+const HealthCoachCard = ({ rec }: HealthCoachCardProps) => (
   <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
     <h3 className="text-sm font-semibold mb-1">🧠 Agent-Health Insight</h3>
     <p className="text-xs text-slate-700 whitespace-pre-line">{rec ?? "Loading..."}</p>
@@ -68,20 +106,79 @@ export default function HealthProfile() {
   const [calories, setCalories] = useState<any>(null);
   const [rec, setRec] = useState<string>("");
   const [syncing, setSyncing] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
 
   // === Load Data ===
   async function loadData() {
-    const [g, w, c, r] = await Promise.all([
-      api.garmin(),
-      api.weight(),
-      api.calories(),
-      api.recommendation()
-    ]);
-    setGarmin(g);
-    setWeight(w);
-    setCalories(c);
-    setRec(r?.advice);
+    setLoading(true);
+    setError(null);
+    console.log("[Data] --- Loading all data ---");
+    try {
+      // Use Promise.allSettled to allow partial data loading
+      const results = await Promise.allSettled([
+        api.garmin(),
+        api.weight(),
+        api.calories(),
+        api.recommendation()
+      ]);
+      console.log("[Data] All settled:", results);
+
+      const [garminResult, weightResult, caloriesResult, recResult] = results;
+
+      if (garminResult.status === 'fulfilled') {
+        setGarmin({
+          latest: garminResult.value,
+          last7hrv: [],
+          last7rhr: [],
+          last7sleep: [],
+          last7runs: []
+        });
+      } else console.error("[Data] Garmin fetch failed:", garminResult.reason);
+
+      if (weightResult.status === 'fulfilled') setWeight(weightResult.value);
+      else console.error("[Data] Weight fetch failed:", weightResult.reason);
+
+      if (caloriesResult.status === 'fulfilled') setCalories(caloriesResult.value);
+      else console.error("[Data] Calories fetch failed:", caloriesResult.reason);
+
+      if (recResult.status === 'fulfilled' && recResult.value?.result) {
+        const { training_plan, nutrition_plan, motivation, today_focus } = recResult.value.result;
+        const formattedRecommendation = `
+**Training Plan:**
+${training_plan || 'N/A'}
+
+**Nutrition Plan:**
+${nutrition_plan || 'N/A'}
+
+**Today's Focus:**
+${today_focus || 'N/A'}
+
+**Motivation:**
+${motivation || 'N/A'}
+        `;
+        setRec(formattedRecommendation);
+      } else {
+        setRec("No new recommendation available.");
+      }
+
+      // Set a general error if any of the critical fetches failed
+      if (results.some(res => res.status === 'rejected')) {
+        setError("Some data failed to load. The displayed information may be incomplete.");
+        toast.error("Some data failed to load.");
+      }
+
+    } catch (err: any) {
+      console.error("[Data] Unexpected error in loadData:", err);
+      setError(err.message || "An unexpected error occurred while loading data.");
+      toast.error(err.message || "Failed to load data.");
+    } finally {
+      setLoading(false);
+      console.log("[Data] --- Finished loading data ---");
+    }
   }
+
 
   useEffect(() => {
     loadData();
@@ -91,37 +188,47 @@ export default function HealthProfile() {
   async function syncNow(kind = "all") {
     try {
       setSyncing(true);
+      setError(null);
+      console.log(`[Sync] --- Syncing ${kind} ---`);
 
       if (kind === "all") {
-        await Promise.all([
-          api.syncGarmin(),
-          api.syncNutrition()
-        ]);
+        await Promise.all([api.syncGarmin(), api.syncNutrition()]);
       } else if (kind === "garmin") {
         await api.syncGarmin();
       } else {
         await api.syncNutrition();
       }
 
+      toast.success("✨ Sync request sent. Fetching new data...");
       await loadData();
-      toast.success("✨ Data synced successfully");
-    } catch (err) {
-      console.error(err);
-      toast.error("Sync failed");
+
+    } catch (err: any) {
+      console.error(`[Sync] Sync failed for ${kind}:`, err);
+      setError(err.message || `Sync failed for ${kind}`);
+      toast.error(err.message || `Sync failed for ${kind}`);
     } finally {
       setSyncing(false);
+      console.log(`[Sync] --- Finished syncing ${kind} ---`);
     }
   }
 
-  if (!garmin || !weight || !calories) {
+  if (loading) {
     return <div className="p-4 text-sm text-slate-600">Fetching health data…</div>;
   }
 
-  const latest = garmin.latest;
-  const runs = garmin.last7runs?.map((x) => ({ value: x.distance_km })) ?? [];
-  const hrvTrend = garmin.last7hrv?.map((x) => ({ value: x })) ?? [];
-  const rhrTrend = garmin.last7rhr?.map((x) => ({ value: x })) ?? [];
-  const sleepTrend = garmin.last7sleep?.map((x) => ({ value: x })) ?? [];
+  // Display a general error message, but still attempt to render the rest of the component
+  const ErrorDisplay = () => error ? (
+     <div className="p-4 mb-4 text-sm text-yellow-800 bg-yellow-50 rounded-md">
+        <strong>Warning:</strong> {error}
+    </div>
+  ) : null;
+
+
+  const latest = garmin?.latest;
+  const runs = garmin?.last7runs?.map((x) => ({ value: x.distance_km })) ?? [];
+  const hrvTrend = garmin?.last7hrv?.map((x) => ({ value: x })) ?? [];
+  const rhrTrend = garmin?.last7rhr?.map((x) => ({ value: x })) ?? [];
+  const sleepTrend = garmin?.last7sleep?.map((x) => ({ value: x })) ?? [];
 
   return (
     <div className="space-y-4 p-4">
@@ -155,11 +262,14 @@ export default function HealthProfile() {
         </button>
       </div>
 
+      {/* Error Display */}
+      <ErrorDisplay />
+
       {/* Vitals + Calories Summary */}
       <div className="grid grid-cols-3 gap-2">
-        <MiniMetric title="Weight (kg)" value={weight.value} trend={[]} />
-        <MiniMetric title="Body Fat (%)" value={weight.bodyfat} trend={[]} />
-        <MiniMetric title="Calories" value={calories.today} trend={calories.last7?.map(x => ({value:x})) ?? []} />
+        <MiniMetric title="Weight (kg)" value={weight?.value} trend={[]} />
+        <MiniMetric title="Body Fat (%)" value={weight?.bodyfat} trend={[]} />
+        <MiniMetric title="Calories" value={calories?.today} trend={calories?.last7?.map(x => ({value:x})) ?? []} />
       </div>
 
       {/* AI Recommendation */}
@@ -174,8 +284,8 @@ export default function HealthProfile() {
       {/* Recovery Trends */}
       <div className="grid grid-cols-3 gap-2">
         <MiniMetric title="HRV (ms)" value={latest?.hrv} trend={hrvTrend} />
-        <MiniMetric title="RHR (bpm)" value={latest?.rhr} trend={rhrTrend} />
-        <MiniMetric title="Sleep (hr)" value={latest?.sleep} trend={sleepTrend} />
+        <MiniMetric title="RHR (bpm)" value={latest?.restingHeartRate} trend={rhrTrend} />
+        <MiniMetric title="Sleep (hr)" value={latest?.sleepingSeconds ? (latest.sleepingSeconds / 3600).toFixed(1) : null} trend={sleepTrend} />
       </div>
     </div>
   );
