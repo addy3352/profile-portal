@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
+import { Activity, Heart, Moon, TrendingUp, Droplets, Utensils, Target, Zap, AlertCircle } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line } from "recharts";
-import toast from "react-hot-toast";
 
 // --- Mesh API Helpers ---
-// Enhanced fetch to include logging, error handling, and no-caching.
 const fetchWithLogs = async (url: string, options: RequestInit = {}) => {
   const finalOptions = { ...options, cache: "no-store" as const };
   console.log(`[API] Fetching: ${url}`, finalOptions);
@@ -18,7 +17,7 @@ const fetchWithLogs = async (url: string, options: RequestInit = {}) => {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    if (response.status === 204) { // No Content
+    if (response.status === 204) {
       console.log(`[API] No content from ${url}`);
       return null;
     }
@@ -41,82 +40,115 @@ const api = {
   syncNutrition: () => fetchWithLogs(`/mcp/call/sync/nutrition`, { method: "POST" })
 };
 
-
 // --- Sparkline Chart ---
 interface SparklineProps {
   data: any[];
   color: string;
 }
-const Sparkline = ({ data, color }: SparklineProps) => (
-  <div className="h-12">
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data}>
-        <Line
-          type="monotone"
-          stroke={color}
-          strokeWidth={2}
-          dot={false}
-          dataKey="value"
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-);
+const Sparkline = ({ data, color }: SparklineProps) => {
+  if (!data || data.length === 0) {
+    return <div className="h-12 flex items-center justify-center text-xs text-gray-400">No data</div>;
+  }
+  return (
+    <div className="h-12">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <Line type="monotone" stroke={color} strokeWidth={2} dot={false} dataKey="value" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
-// --- Mini Metric Card ---
-interface MiniMetricProps {
-  title: string;
-  value: React.ReactNode;
-  trend: any[];
-}
-const MiniMetric = ({ title, value, trend }: MiniMetricProps) => (
-  <div className="bg-white rounded-xl shadow-sm p-2">
-    <div className="text-[11px] text-slate-600">{title}</div>
-    <div className="text-sm font-semibold text-slate-900">{value ?? "--"}</div>
-    <Sparkline data={trend} color="#0F766E" />
-  </div>
-);
+// --- Helper Functions ---
+const calculateRecoveryScore = (hrv: number | null, rhr: number | null, sleep: number | null): number => {
+  if (!hrv && !rhr && !sleep) return 0;
+  
+  let score = 0;
+  let factors = 0;
 
-// --- Agent-Health Card ---
-interface HealthCoachCardProps {
-  rec: React.ReactNode;
-}
-const HealthCoachCard = ({ rec }: HealthCoachCardProps) => (
-  <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-    <h3 className="text-sm font-semibold mb-1">🧠 Agent-Health Insight</h3>
-    <p className="text-xs text-slate-700 whitespace-pre-line">{rec ?? "Loading..."}</p>
-  </div>
-);
+  if (hrv !== null) {
+    score += hrv >= 60 ? 35 : hrv >= 40 ? 20 : 10;
+    factors++;
+  }
+  
+  if (rhr !== null) {
+    score += rhr <= 60 ? 35 : rhr <= 70 ? 20 : 10;
+    factors++;
+  }
+  
+  if (sleep !== null) {
+    score += sleep >= 7 ? 30 : sleep >= 6 ? 15 : 5;
+    factors++;
+  }
+
+  return factors > 0 ? Math.round(score / factors * 100 / 35) : 0;
+};
+
+const getRecoveryColor = (score: number) => {
+  if (score >= 70) return 'text-green-600';
+  if (score >= 50) return 'text-yellow-600';
+  return 'text-red-600';
+};
+
+const getRecoveryBg = (score: number) => {
+  if (score >= 70) return 'bg-green-50 border-green-200';
+  if (score >= 50) return 'bg-yellow-50 border-yellow-200';
+  return 'bg-red-50 border-red-200';
+};
+
+const getMetricStatus = (metric: string, value: number | null) => {
+  if (value === null) return 'unknown';
+  const statuses: any = {
+    hrv: value >= 60 ? 'good' : value >= 40 ? 'moderate' : 'low',
+    rhr: value <= 60 ? 'good' : value <= 70 ? 'moderate' : 'high',
+    sleep: value >= 7 ? 'good' : value >= 6 ? 'moderate' : 'low'
+  };
+  return statuses[metric] || 'moderate';
+};
+
+const getStatusColor = (status: string) => {
+  return {
+    good: 'text-green-600 bg-green-50',
+    moderate: 'text-yellow-600 bg-yellow-50',
+    low: 'text-red-600 bg-red-50',
+    high: 'text-red-600 bg-red-50',
+    unknown: 'text-gray-400 bg-gray-50'
+  }[status] || 'text-gray-400 bg-gray-50';
+};
+
+const getStatusLabel = (metric: string, value: number | null) => {
+  if (value === null) return '- - -';
+  const status = getMetricStatus(metric, value);
+  if (metric === 'rhr') {
+    return value <= 60 ? '↓ Good' : '→ Monitor';
+  }
+  if (metric === 'hrv') {
+    return value >= 60 ? '↑ Good' : '↓ Low';
+  }
+  if (metric === 'sleep') {
+    return value >= 7 ? '✓ Good' : '⚠ Low';
+  }
+  return '→';
+};
 
 export default function HealthProfile() {
-
-  // === Auth check (TEMPORARILY COMMENTED OUT FOR DEBUGGING) ===
-  /*
-  const token = localStorage.getItem("hp_token");
-  useEffect(() => {
-    if (!token || token !== import.meta.env.VITE_HEALTH_PASS) {
-      window.location.href = "/signin";
-    }
-  }, [token]);
-  */
-
-  // === State ===
   const [garmin, setGarmin] = useState<any>(null);
   const [weight, setWeight] = useState<any>(null);
   const [calories, setCalories] = useState<any>(null);
-  const [rec, setRec] = useState<string>("");
+  const [aiInsight, setAiInsight] = useState<any>(null);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
-
-  // === Load Data ===
   async function loadData() {
     setLoading(true);
     setError(null);
+    setWarning(null);
     console.log("[Data] --- Loading all data ---");
+    
     try {
-      // Use Promise.allSettled to allow partial data loading
       const results = await Promise.allSettled([
         api.garmin(),
         api.weight(),
@@ -128,6 +160,9 @@ export default function HealthProfile() {
       const [garminResult, weightResult, caloriesResult, recResult] = results;
 
       if (garminResult.status === 'fulfilled') {
+        if (Object.keys(garminResult.value).length === 0) {
+          setWarning("Garmin data is currently unavailable. Some metrics will be missing.");
+        }
         setGarmin({
           latest: garminResult.value,
           last7hrv: [],
@@ -135,60 +170,58 @@ export default function HealthProfile() {
           last7sleep: [],
           last7runs: []
         });
-      } else console.error("[Data] Garmin fetch failed:", garminResult.reason);
-
-      if (weightResult.status === 'fulfilled') setWeight(weightResult.value);
-      else console.error("[Data] Weight fetch failed:", weightResult.reason);
-
-      if (caloriesResult.status === 'fulfilled') setCalories(caloriesResult.value);
-      else console.error("[Data] Calories fetch failed:", caloriesResult.reason);
-
-      if (recResult.status === 'fulfilled' && recResult.value?.result) {
-        const { training_plan, nutrition_plan, motivation, today_focus } = recResult.value.result;
-        const formattedRecommendation = `
-**Training Plan:**
-${training_plan || 'N/A'}
-
-**Nutrition Plan:**
-${nutrition_plan || 'N/A'}
-
-**Today's Focus:**
-${today_focus || 'N/A'}
-
-**Motivation:**
-${motivation || 'N/A'}
-        `;
-        setRec(formattedRecommendation);
       } else {
-        setRec("No new recommendation available.");
+        console.error("[Data] Garmin fetch failed:", garminResult.reason);
+        setWarning("Failed to load Garmin data. Recovery metrics will be limited.");
       }
 
-      // Set a general error if any of the critical fetches failed
+      if (weightResult.status === 'fulfilled') {
+        setWeight(weightResult.value);
+      } else {
+        console.error("[Data] Weight fetch failed:", weightResult.reason);
+      }
+
+      if (caloriesResult.status === 'fulfilled') {
+        setCalories(caloriesResult.value);
+      } else {
+        console.error("[Data] Calories fetch failed:", caloriesResult.reason);
+      }
+
+      if (recResult.status === 'fulfilled' && recResult.value?.result) {
+        setAiInsight(recResult.value.result);
+      } else {
+        console.error("[Data] Recommendation fetch failed");
+        setAiInsight({
+          training_plan: "Unable to generate recommendations without complete data.",
+          nutrition_plan: "Sync your data to receive personalized nutrition guidance.",
+          hydration_target_l: 3.5,
+          today_focus: "Sync your health data to get personalized insights",
+          motivation: "Every data point brings you closer to optimal performance."
+        });
+      }
+
       if (results.some(res => res.status === 'rejected')) {
         setError("Some data failed to load. The displayed information may be incomplete.");
-        toast.error("Some data failed to load.");
       }
 
     } catch (err: any) {
       console.error("[Data] Unexpected error in loadData:", err);
       setError(err.message || "An unexpected error occurred while loading data.");
-      toast.error(err.message || "Failed to load data.");
     } finally {
       setLoading(false);
       console.log("[Data] --- Finished loading data ---");
     }
   }
 
-
   useEffect(() => {
     loadData();
   }, []);
 
-  // === Sync Handler ===
   async function syncNow(kind = "all") {
     try {
       setSyncing(true);
       setError(null);
+      setWarning(null);
       console.log(`[Sync] --- Syncing ${kind} ---`);
 
       if (kind === "all") {
@@ -199,13 +232,11 @@ ${motivation || 'N/A'}
         await api.syncNutrition();
       }
 
-      toast.success("✨ Sync request sent. Fetching new data...");
       await loadData();
 
     } catch (err: any) {
       console.error(`[Sync] Sync failed for ${kind}:`, err);
       setError(err.message || `Sync failed for ${kind}`);
-      toast.error(err.message || `Sync failed for ${kind}`);
     } finally {
       setSyncing(false);
       console.log(`[Sync] --- Finished syncing ${kind} ---`);
@@ -213,81 +244,251 @@ ${motivation || 'N/A'}
   }
 
   if (loading) {
-    return <div className="p-4 text-sm text-slate-600">Fetching health data…</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full mb-3"></div>
+          <p className="text-gray-600">Loading health data...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Display a general error message, but still attempt to render the rest of the component
-  const ErrorDisplay = () => error ? (
-     <div className="p-4 mb-4 text-sm text-yellow-800 bg-yellow-50 rounded-md">
-        <strong>Warning:</strong> {error}
-    </div>
-  ) : null;
-
-
   const latest = garmin?.latest;
-  const runs = garmin?.last7runs?.map((x) => ({ value: x.distance_km })) ?? [];
-  const hrvTrend = garmin?.last7hrv?.map((x) => ({ value: x })) ?? [];
-  const rhrTrend = garmin?.last7rhr?.map((x) => ({ value: x })) ?? [];
-  const sleepTrend = garmin?.last7sleep?.map((x) => ({ value: x })) ?? [];
+  const runs = garmin?.last7runs?.map((x: any) => ({ value: x.distance_km })) ?? [];
+  const hrvTrend = garmin?.last7hrv?.map((x: any) => ({ value: x })) ?? [];
+  const rhrTrend = garmin?.last7rhr?.map((x: any) => ({ value: x })) ?? [];
+  const sleepTrend = garmin?.last7sleep?.map((x: any) => ({ value: x })) ?? [];
+  const calorieTrend = calories?.last7?.map((x: any) => ({ value: x })) ?? [];
+
+  const hrv = latest?.hrv ?? null;
+  const rhr = latest?.restingHeartRate ?? null;
+  const sleepHours = latest?.sleepingSeconds ? (latest.sleepingSeconds / 3600) : null;
+  const distance7days = runs.reduce((sum: number, r: any) => sum + (r.value || 0), 0);
+
+  const recoveryScore = calculateRecoveryScore(hrv, rhr, sleepHours);
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Health Dashboard</h1>
+            <p className="text-gray-500 mt-1">Marathon Training Metrics</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => syncNow("garmin")}
+              disabled={syncing}
+              className="px-3 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
+            >
+              Sync Garmin
+            </button>
+            <button
+              onClick={() => syncNow("nutrition")}
+              disabled={syncing}
+              className="px-3 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 disabled:opacity-50 transition"
+            >
+              Sync Nutrition
+            </button>
+            <button
+              onClick={() => syncNow("all")}
+              disabled={syncing}
+              className="px-3 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 disabled:opacity-50 transition flex items-center gap-2"
+            >
+              {syncing && <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>}
+              Refresh All
+            </button>
+          </div>
+        </div>
 
-      {/* Sync Controls */}
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={() => syncNow("garmin")}
-          disabled={syncing}
-          className="px-3 py-1 rounded bg-teal-600 text-white text-xs hover:bg-teal-700 disabled:opacity-50"
-        >
-          {syncing ? "Syncing…" : "Sync Garmin"}
-        </button>
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-900">Error</p>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        )}
 
-        <button
-          onClick={() => syncNow("nutrition")}
-          disabled={syncing}
-          className="px-3 py-1 rounded bg-amber-600 text-white text-xs hover:bg-amber-700 disabled:opacity-50"
-        >
-          {syncing ? "Syncing…" : "Sync Nutrition"}
-        </button>
+        {/* Warning Display */}
+        {warning && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-yellow-900">Warning</p>
+              <p className="text-sm text-yellow-700">{warning}</p>
+            </div>
+          </div>
+        )}
 
-        <button
-          onClick={() => syncNow("all")}
-          disabled={syncing}
-          className="px-3 py-1 rounded bg-slate-700 text-white text-xs hover:bg-slate-900 disabled:opacity-50 flex items-center gap-1"
-        >
-          {syncing ? (
-            <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span>
-          ) : "Refresh All"}
-        </button>
-      </div>
+        {/* Recovery Score Hero */}
+        <div className={`p-6 rounded-xl border-2 ${getRecoveryBg(recoveryScore)}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Recovery Score</p>
+              <p className={`text-5xl font-bold ${getRecoveryColor(recoveryScore)}`}>
+                {recoveryScore || '--'}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                {recoveryScore >= 70 ? 'Ready for intensity' : recoveryScore >= 50 ? 'Moderate training OK' : recoveryScore > 0 ? 'Recovery day needed' : 'Insufficient data'}
+              </p>
+            </div>
+            <Zap className={`w-20 h-20 ${getRecoveryColor(recoveryScore)} opacity-20`} />
+          </div>
+        </div>
 
-      {/* Error Display */}
-      <ErrorDisplay />
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <Heart className="w-5 h-5 text-red-500" />
+              <span className={`text-xs px-2 py-1 rounded ${getStatusColor(getMetricStatus('rhr', rhr))}`}>
+                {getStatusLabel('rhr', rhr)}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{rhr ?? '--'}</p>
+            <p className="text-xs text-gray-500">Resting HR (bpm)</p>
+            <div className="mt-2">
+              <Sparkline data={rhrTrend} color="#ef4444" />
+            </div>
+          </div>
 
-      {/* Vitals + Calories Summary */}
-      <div className="grid grid-cols-3 gap-2">
-        <MiniMetric title="Weight (kg)" value={weight?.value} trend={[]} />
-        <MiniMetric title="Body Fat (%)" value={weight?.bodyfat} trend={[]} />
-        <MiniMetric title="Calories" value={calories?.today} trend={calories?.last7?.map(x => ({value:x})) ?? []} />
-      </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <Activity className="w-5 h-5 text-purple-500" />
+              <span className={`text-xs px-2 py-1 rounded ${getStatusColor(getMetricStatus('hrv', hrv))}`}>
+                {getStatusLabel('hrv', hrv)}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{hrv ?? '--'}</p>
+            <p className="text-xs text-gray-500">HRV (ms)</p>
+            <div className="mt-2">
+              <Sparkline data={hrvTrend} color="#a855f7" />
+            </div>
+          </div>
 
-      {/* AI Recommendation */}
-      <HealthCoachCard rec={rec} />
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <Moon className="w-5 h-5 text-indigo-500" />
+              <span className={`text-xs px-2 py-1 rounded ${getStatusColor(getMetricStatus('sleep', sleepHours))}`}>
+                {getStatusLabel('sleep', sleepHours)}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{sleepHours ? sleepHours.toFixed(1) : '--'}</p>
+            <p className="text-xs text-gray-500">Sleep (hours)</p>
+            <div className="mt-2">
+              <Sparkline data={sleepTrend} color="#6366f1" />
+            </div>
+          </div>
 
-      {/* Run Trend */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <h3 className="text-sm font-semibold mb-1">Running — Last 7 Activities</h3>
-        <Sparkline data={runs} color="#0F766E" />
-      </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="w-5 h-5 text-teal-500" />
+              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600">
+                7 days
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{distance7days ? distance7days.toFixed(1) : '--'}</p>
+            <p className="text-xs text-gray-500">Distance (km)</p>
+            <div className="mt-2">
+              <Sparkline data={runs} color="#14b8a6" />
+            </div>
+          </div>
+        </div>
 
-      {/* Recovery Trends */}
-      <div className="grid grid-cols-3 gap-2">
-        <MiniMetric title="HRV (ms)" value={latest?.hrv} trend={hrvTrend} />
-        <MiniMetric title="RHR (bpm)" value={latest?.restingHeartRate} trend={rhrTrend} />
-        <MiniMetric title="Sleep (hr)" value={latest?.sleepingSeconds ? (latest.sleepingSeconds / 3600).toFixed(1) : null} trend={sleepTrend} />
+        {/* Today's Focus - Prominent Callout */}
+        {aiInsight?.today_focus && (
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-6 rounded-xl text-white">
+            <div className="flex items-start gap-3">
+              <Target className="w-6 h-6 mt-1 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium opacity-90 mb-1">Today's Focus</p>
+                <p className="text-xl font-semibold leading-tight">{aiInsight.today_focus}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Insights Grid */}
+        <div className="grid md:grid-cols-2 gap-6">
+          
+          {/* Training Plan */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-5 h-5 text-teal-600" />
+              <h3 className="font-semibold text-gray-900">Training Plan</h3>
+            </div>
+            <p className="text-gray-700 leading-relaxed">
+              {aiInsight?.training_plan || 'No training plan available. Sync your data to receive personalized guidance.'}
+            </p>
+          </div>
+
+          {/* Nutrition Plan */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Utensils className="w-5 h-5 text-orange-600" />
+              <h3 className="font-semibold text-gray-900">Nutrition Plan</h3>
+            </div>
+            <p className="text-gray-700 leading-relaxed">
+              {aiInsight?.nutrition_plan || 'No nutrition plan available. Sync your data to receive personalized guidance.'}
+            </p>
+          </div>
+
+          {/* Hydration Target */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Droplets className="w-5 h-5 text-blue-600" />
+              <h3 className="font-semibold text-gray-900">Hydration Target</h3>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <p className="text-4xl font-bold text-blue-600">
+                {aiInsight?.hydration_target_l ?? '3.5'}
+              </p>
+              <p className="text-gray-500">liters</p>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">UAE climate adjusted (+0.5L for heat/humidity)</p>
+          </div>
+
+          {/* Motivation */}
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg text-white">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-5 h-5 text-yellow-400" />
+              <h3 className="font-semibold">Motivation</h3>
+            </div>
+            <p className="text-lg italic leading-relaxed">
+              {aiInsight?.motivation || 'Every step forward is progress. Stay consistent.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Secondary Metrics */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h3 className="font-semibold text-gray-900 mb-4">Additional Metrics</h3>
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Weight</p>
+              <p className="text-2xl font-semibold text-gray-900">{weight?.value ?? '--'} kg</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Body Fat</p>
+              <p className="text-2xl font-semibold text-gray-900">{weight?.bodyfat ?? '--'}%</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Calories (Today)</p>
+              <p className="text-2xl font-semibold text-gray-900">{calories?.today ?? '--'}</p>
+              <div className="mt-2">
+                <Sparkline data={calorieTrend} color="#f59e0b" />
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
-
