@@ -9,6 +9,8 @@ import WorkCV from './work/WorkCV'
 import HealthProfile from './health/HealthProfile'
 import SignIn from './health/SignIn'
 import LinkedInPage from './health/LinkedInPage'
+import BlogList from './health/BlogList'
+import BlogPost from './blog/BlogPost'
 
 const router = createBrowserRouter([
   { path: '/', element: <AppShell />, children: [
@@ -18,7 +20,9 @@ const router = createBrowserRouter([
       { path: 'work-cv', element: <WorkCV /> },
       { path: 'health', element: <HealthProfile /> },
       { path: 'login', element: <SignIn /> },
-      { path: 'linkedin', element: <LinkedInPage /> }
+      { path: 'linkedin', element: <LinkedInPage /> },
+      { path: 'blog', element: <BlogList /> },
+      { path: 'blog/:slug', element: <BlogPost /> }
   ] }
 ])
 
