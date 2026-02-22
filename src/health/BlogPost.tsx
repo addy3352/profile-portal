@@ -16,8 +16,8 @@ export default function BlogPost() {
         setLoading(true);
         // Dynamic import of the specific markdown file
         // Note: The path must be relative or absolute from project root for Vite to analyze it
-        const modules = import.meta.glob('/src/content/posts/*.md', { query: '?raw', import: 'default' });
-        const path = `/src/content/posts/${slug}.md`;
+        const modules = import.meta.glob('../content/posts/*.md', { query: '?raw', import: 'default' });
+        const path = `../content/posts/${slug}.md`;
         
         if (!modules[path]) throw new Error('Post not found');
         

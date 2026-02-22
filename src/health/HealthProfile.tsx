@@ -298,7 +298,7 @@ export default function HealthProfile() {
 
   // Load Blog Data
   useEffect(() => {
-    const modules = import.meta.glob('/src/content/posts/*.md', { query: '?raw', import: 'default', eager: true });
+    const modules = import.meta.glob('../content/posts/*.md', { query: '?raw', import: 'default', eager: true });
     const posts = Object.entries(modules).map(([path, content]) => {
       const { metadata } = parseFrontmatter(content as string);
       return {

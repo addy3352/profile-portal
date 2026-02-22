@@ -31,7 +31,7 @@ export default function BlogList() {
 
   useEffect(() => {
     // Load all markdown files from the content directory
-    const modules = import.meta.glob('/src/content/posts/*.md', { query: '?raw', import: 'default', eager: true });
+    const modules = import.meta.glob('../content/posts/*.md', { query: '?raw', import: 'default', eager: true });
     
     const loadedPosts = Object.entries(modules).map(([path, content]) => {
       const { metadata } = parseFrontmatter(content as string);
