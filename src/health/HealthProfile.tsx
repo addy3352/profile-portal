@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Activity, Heart, Moon, TrendingUp, Droplets, Utensils, Target, Zap, AlertCircle, BookOpen, ArrowRight } from "lucide-react";
+import { Activity, Heart, Moon, TrendingUp, Droplets, Utensils, Target, Zap, AlertCircle, BookOpen, ArrowRight, Calendar } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ReferenceLine, PieChart, Pie } from "recharts";
 
 // --- Mesh API Helpers ---
@@ -298,14 +298,18 @@ export default function HealthProfile() {
 
   // Load Blog Data
   useEffect(() => {
+    console.log("[HealthProfile] Loading blog posts for dashboard...");
     const modules = import.meta.glob('../content/posts/*.md', { query: '?raw', import: 'default', eager: true });
+    console.log("[HealthProfile] Modules found:", Object.keys(modules));
     const posts = Object.entries(modules).map(([path, content]) => {
-      const { metadata } = parseFrontmatter(content as string);
+      const { metadata, content: mdContent } = parseFrontmatter(content as string);
+      const readTime = Math.ceil(mdContent.split(/\s+/).length / 200);
       return {
         slug: path.split('/').pop()?.replace('.md', '') || '',
         title: metadata.title || 'Untitled',
         date: metadata.date || '',
-        description: metadata.description || ''
+        description: metadata.description || '',
+        readTime
       };
     });
     posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -738,27 +742,43 @@ export default function HealthProfile() {
         </div>
 
         {/* Latest Articles */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Latest Articles</h3>
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <BookOpen className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Latest Insights</h3>
+                <p className="text-xs text-gray-500">Updates from the blog</p>
+              </div>
             </div>
-            <Link to="/blog" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+            <Link to="/blog" className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
               View All <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-5">
             {recentPosts.map((post) => (
-              <Link key={post.slug} to={`/blog/${post.slug}`} className="block group">
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50 transition">
-                  <h4 className="font-medium text-gray-900 group-hover:text-blue-700 mb-1">{post.title}</h4>
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{post.description}</p>
-                  <span className="text-xs text-gray-400">{post.date}</span>
+              <Link key={post.slug} to={`/blog/${post.slug}`} className="block group h-full">
+                <div className="h-full p-5 rounded-xl bg-gray-50 border border-gray-100 group-hover:border-blue-200 group-hover:bg-white group-hover:shadow-md transition-all duration-200 flex flex-col">
+                  <div className="flex items-center justify-between mb-3 text-xs text-gray-500">
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {post.date}</span>
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{post.readTime} min read</span>
+                  </div>
+                  <h4 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">{post.title}</h4>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-grow">{post.description}</p>
+                  <div className="flex items-center text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity -ml-1">
+                    Read more <ArrowRight className="w-4 h-4 ml-1" />
+                  </div>
                 </div>
               </Link>
             ))}
-            {recentPosts.length === 0 && <p className="text-gray-500 text-sm">No articles found.</p>}
+            {recentPosts.length === 0 && (
+              <div className="col-span-2 text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <p className="text-gray-500 text-sm">No articles found yet.</p>
+                <p className="text-xs text-gray-400 mt-1">Add markdown files to src/content/posts</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

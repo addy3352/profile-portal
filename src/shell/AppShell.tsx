@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { User, HeartPulse, Download, ShieldCheck, LayoutDashboard, Newspaper, Share2 } from 'lucide-react'
+import { User, HeartPulse, Download, ShieldCheck, LayoutDashboard, Newspaper, Share2, BookOpen } from 'lucide-react'
 import { Toaster } from "react-hot-toast";
 <Toaster position="top-right" />
 
@@ -30,6 +30,9 @@ const AppShell: React.FC = () => {
             </Link>
             <Link to="/linkedin" className={`px-3 py-1.5 rounded ${is('/linkedin')?'bg-brand-primary text-white':'hover:bg-slate-100'}`}>
               <div className="inline-flex items-center gap-2"><Share2 className="h-4 w-4"/>LinkedIn</div>
+            </Link>
+            <Link to="/blog" className={`px-3 py-1.5 rounded ${is('/blog')?'bg-brand-primary text-white':'hover:bg-slate-100'}`}>
+              <div className="inline-flex items-center gap-2"><BookOpen className="h-4 w-4"/>Blogs</div>
             </Link>
             <Link to="/health" className={`px-3 py-1.5 rounded ${is('/health')?'bg-brand-primary text-white':'hover:bg-slate-100'}`}>
               <div className="inline-flex items-center gap-2"><HeartPulse className="h-4 w-4" /> Health</div>

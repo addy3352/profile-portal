@@ -10,7 +10,7 @@ import HealthProfile from './health/HealthProfile'
 import SignIn from './health/SignIn'
 import LinkedInPage from './health/LinkedInPage'
 import BlogList from './health/BlogList'
-import BlogPost from './blog/BlogPost'
+import BlogPost from './health/BlogPost'
 
 const router = createBrowserRouter([
   { path: '/', element: <AppShell />, children: [

@@ -30,8 +30,10 @@ export default function BlogList() {
   const [posts, setPosts] = useState<PostMetadata[]>([]);
 
   useEffect(() => {
+    console.log("[BlogList] Checking for markdown files...");
     // Load all markdown files from the content directory
     const modules = import.meta.glob('../content/posts/*.md', { query: '?raw', import: 'default', eager: true });
+    console.log("[BlogList] Modules found:", Object.keys(modules));
     
     const loadedPosts = Object.entries(modules).map(([path, content]) => {
       const { metadata } = parseFrontmatter(content as string);
@@ -48,6 +50,7 @@ export default function BlogList() {
 
     // Sort by date descending
     loadedPosts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    console.log("[BlogList] Processed posts:", loadedPosts);
     setPosts(loadedPosts);
   }, []);
 
