@@ -1,11 +1,20 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Activity, Heart, Moon, TrendingUp, Droplets, Utensils, Target, Zap, AlertCircle } from "lucide-react";
-import { ResponsiveContainer, LineChart, Line } from "recharts";
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Activity, Heart, Moon, TrendingUp, Droplets, Utensils, Target, Zap, AlertCircle, BookOpen, ArrowRight } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ReferenceLine, PieChart, Pie } from "recharts";
 
 // --- Mesh API Helpers ---
 const fetchWithLogs = async (url: string, options: RequestInit = {}) => {
-  const finalOptions = { ...options, cache: "no-store" as const };
+//  const finalOptions = { ...options, cache: "no-store" as const };
+  const token = localStorage.getItem("hp_token");
+  const finalOptions = {
+    ...options,
+    headers: {
+      ...options.headers,
+      ...(token ? { "x-api-key": token } : {})
+    },
+    cache: "no-store" as const
+  };
   console.log(`[API] Fetching: ${url}`, finalOptions);
 
   try {
@@ -36,9 +45,12 @@ const api = {
   garmin: () => fetchWithLogs(`/mcp/call/garmin/latest`, { method: "POST" }),
   weight: () => fetchWithLogs(`/mcp/call/weight/latest`),
   calories: () => fetchWithLogs(`/mcp/call/calories/latest`),
+  caloriesTrend: () => fetchWithLogs(`/mcp/call/calories/trend`),
+  activitiesTrend: () => fetchWithLogs(`/mcp/call/activities/trend`),
   recommendation: () => fetchWithLogs(`/mcp/call/ai/recommendation`, { method: "POST" }),
   syncGarmin: () => fetchWithLogs(`/mcp/call/sync/garmin`, { method: "POST" }),
-  syncNutrition: () => fetchWithLogs(`/mcp/call/sync/nutrition`, { method: "POST" })
+  syncNutrition: () => fetchWithLogs(`/mcp/call/sync/nutrition`, { method: "POST" }),
+  medical: () => fetchWithLogs(`/mcp/call/medical/latest`)
 };
 
 // --- Sparkline Chart ---
@@ -62,40 +74,25 @@ const Sparkline = ({ data, color }: SparklineProps) => {
 };
 
 // --- Helper Functions ---
-const calculateRecoveryScore = (hrv: number | null, rhr: number | null, sleep: number | null): number => {
-  if (!hrv && !rhr && !sleep) return 0;
-  
-  let score = 0;
-  let factors = 0;
-
-  if (hrv !== null) {
-    score += hrv >= 60 ? 35 : hrv >= 40 ? 20 : 10;
-    factors++;
-  }
-  
-  if (rhr !== null) {
-    score += rhr <= 60 ? 35 : rhr <= 70 ? 20 : 10;
-    factors++;
-  }
-  
-  if (sleep !== null) {
-    score += sleep >= 7 ? 30 : sleep >= 6 ? 15 : 5;
-    factors++;
+const getReadiness = (hrv: number | null, rhr: number | null, sleep: number | null) => {
+  if (hrv === null || rhr === null || sleep === null) {
+    return { title: 'Sync Required', color: 'text-gray-400', bg: 'bg-gray-50 border-gray-200', msg: 'Sync data to see readiness' };
   }
 
-  return factors > 0 ? Math.round(score / factors * 100 / 35) : 0;
-};
+  let stress = 0;
+  if (hrv < 40) stress++;
+  if (rhr > 70) stress++;
+  if (sleep < 6) stress++;
 
-const getRecoveryColor = (score: number) => {
-  if (score >= 70) return 'text-green-600';
-  if (score >= 50) return 'text-yellow-600';
-  return 'text-red-600';
-};
-
-const getRecoveryBg = (score: number) => {
-  if (score >= 70) return 'bg-green-50 border-green-200';
-  if (score >= 50) return 'bg-yellow-50 border-yellow-200';
-  return 'bg-red-50 border-red-200';
+  if (stress === 0) {
+    return { title: 'Prime Condition', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', msg: 'Ready for high intensity training' };
+  } else if (stress === 1) {
+    return { title: 'Good State', color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', msg: 'Balanced state for normal training' };
+  } else if (stress === 2) {
+    return { title: 'Fatigued', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', msg: 'Consider active recovery or light training' };
+  } else {
+    return { title: 'Rest Needed', color: 'text-red-600', bg: 'bg-red-50 border-red-200', msg: 'Focus on sleep and recovery today' };
+  }
 };
 
 const getMetricStatus = (metric: string, value: number | null) => {
@@ -133,20 +130,60 @@ const getStatusLabel = (metric: string, value: number | null) => {
   return '→';
 };
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg text-sm z-50">
+        <p className="font-semibold text-gray-900 mb-1">{data.name}</p>
+        <div className="space-y-1">
+          <p className="text-gray-600">
+            <span className="font-medium text-gray-900">{Math.round(data.displayVal)}</span>
+            <span className="text-gray-400 mx-1">/</span>
+            {Math.round(data.displayMax)} {data.unit}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// --- Blog Helper ---
+const parseFrontmatter = (text: string) => {
+  const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return { metadata: {}, content: text };
+  
+  const metadataLines = match[1].split('\n');
+  const metadata: Record<string, string> = {};
+  
+  metadataLines.forEach(line => {
+    const [key, ...value] = line.split(':');
+    if (key && value) metadata[key.trim()] = value.join(':').trim();
+  });
+  
+  return { metadata, content: match[2] };
+};
+
 export default function HealthProfile() {
   const [garmin, setGarmin] = useState<any>(null);
   const [weight, setWeight] = useState<any>(null);
   const [calories, setCalories] = useState<any>(null);
+  const [caloriesTrend, setCaloriesTrend] = useState<any[]>([]);
+  const [activitiesTrend, setActivitiesTrend] = useState<any[]>([]);
   const [aiInsight, setAiInsight] = useState<any>(null);
+  const [medical, setMedical] = useState<any>(null);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem("hp_token");
-    if (!token || token !== import.meta.env.VITE_HEALTH_PASS) {
+    const envPass = import.meta.env.VITE_HEALTH_PASS;
+    if (!token || !envPass || token !== envPass.trim()) {
       navigate("/login");
     }
   }, [navigate]);
@@ -162,11 +199,14 @@ export default function HealthProfile() {
         api.garmin(),
         api.weight(),
         api.calories(),
-        api.recommendation()
+        api.recommendation(),
+        api.medical(),
+        api.caloriesTrend(),
+        api.activitiesTrend()
       ]);
       console.log("[Data] All settled:", results);
 
-      const [garminResult, weightResult, caloriesResult, recResult] = results;
+      const [garminResult, weightResult, caloriesResult, recResult, medicalResult, caloriesTrendResult, activitiesTrendResult] = results;
 
       if (garminResult.status === 'fulfilled') {
         if (Object.keys(garminResult.value).length === 0) {
@@ -181,7 +221,10 @@ export default function HealthProfile() {
         });
       } else {
         console.error("[Data] Garmin fetch failed:", garminResult.reason);
-        setWarning("Failed to load Garmin data. Recovery metrics will be limited.");
+        const isServerIssue = garminResult.reason?.message?.includes('504') || garminResult.reason?.message?.includes('502');
+        setWarning(isServerIssue 
+          ? "Garmin data unavailable (Server Error). Please try refreshing later." 
+          : "Failed to load Garmin data. Recovery metrics will be limited.");
       }
 
       if (weightResult.status === 'fulfilled') {
@@ -209,8 +252,35 @@ export default function HealthProfile() {
         });
       }
 
+      if (medicalResult.status === 'fulfilled') {
+        setMedical(medicalResult.value);
+      } else {
+        console.error("[Data] Medical fetch failed:", medicalResult.reason);
+      }
+
+      if (caloriesTrendResult.status === 'fulfilled') {
+        const val = caloriesTrendResult.value;
+        const data = val?.result?.data || val?.data || (Array.isArray(val) ? val : []);
+        setCaloriesTrend(Array.isArray(data) ? data : []);
+      } else {
+        console.error("[Data] Calories trend fetch failed:", caloriesTrendResult.reason);
+      }
+
+      if (activitiesTrendResult.status === 'fulfilled') {
+        const val = activitiesTrendResult.value;
+        const data = val?.result?.data || val?.data || (Array.isArray(val) ? val : []);
+        setActivitiesTrend(Array.isArray(data) ? data : []);
+      } else {
+        console.error("[Data] Activities trend fetch failed:", activitiesTrendResult.reason);
+      }
+
       if (results.some(res => res.status === 'rejected')) {
-        setError("Some data failed to load. The displayed information may be incomplete.");
+        const hasServerIssue = results.some(
+          res => res.status === 'rejected' && (res.reason?.message?.includes('504') || res.reason?.message?.includes('502'))
+        );
+        setError(hasServerIssue 
+          ? "Server unreachable (502/504). The backend service appears to be down." 
+          : "Some data failed to load. The displayed information may be incomplete.");
       }
 
     } catch (err: any) {
@@ -224,6 +294,22 @@ export default function HealthProfile() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Load Blog Data
+  useEffect(() => {
+    const modules = import.meta.glob('/src/content/posts/*.md', { query: '?raw', import: 'default', eager: true });
+    const posts = Object.entries(modules).map(([path, content]) => {
+      const { metadata } = parseFrontmatter(content as string);
+      return {
+        slug: path.split('/').pop()?.replace('.md', '') || '',
+        title: metadata.title || 'Untitled',
+        date: metadata.date || '',
+        description: metadata.description || ''
+      };
+    });
+    posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setRecentPosts(posts.slice(0, 2));
   }, []);
 
   async function syncNow(kind = "all") {
@@ -268,14 +354,57 @@ export default function HealthProfile() {
   const hrvTrend = garmin?.last7hrv?.map((x: any) => ({ value: x })) ?? [];
   const rhrTrend = garmin?.last7rhr?.map((x: any) => ({ value: x })) ?? [];
   const sleepTrend = garmin?.last7sleep?.map((x: any) => ({ value: x })) ?? [];
-  const calorieTrend = calories?.last7?.map((x: any) => ({ value: x })) ?? [];
 
   const hrv = latest?.hrv ?? null;
+  const distance = latest?.distance ?? null;
   const rhr = latest?.restingHeartRate ?? null;
-  const sleepHours = latest?.sleepingSeconds ? (latest.sleepingSeconds / 3600) : null;
+  const sleepHours = latest?.measurableAsleepDuration ? (latest.measurableAsleepDuration / 3600) : null;
   const distance7days = runs.reduce((sum: number, r: any) => sum + (r.value || 0), 0);
 
-  const recoveryScore = calculateRecoveryScore(hrv, rhr, sleepHours);
+  const readiness = getReadiness(hrv, rhr, sleepHours);
+
+  const targetCalories = 2000;
+
+  const createMacroData = (name: string, current: number, target: number, unit: string, fill: string, isKcal = false) => {
+    const valInKcal = isKcal ? current : (name === 'Fat' ? current * 9 : current * 4);
+    const targetInKcal = isKcal ? target : (name === 'Fat' ? target * 9 : target * 4);
+    
+    return {
+      name,
+      displayVal: current,
+      displayMax: target,
+      unit,
+      fill,
+      filled: Math.min(valInKcal, targetInKcal),
+      remaining: Math.max(0, targetInKcal - valInKcal),
+      excess: Math.max(0, valInKcal - targetInKcal)
+    };
+  };
+
+  const macroData = [
+    createMacroData('Calories', calories?.calories || 0, targetCalories, 'kcal', '#10b981', true),
+    createMacroData('Carbs', calories?.carbs || 0, (targetCalories * 0.45) / 4, 'g', '#3b82f6'),
+    createMacroData('Protein', calories?.protein || 0, (targetCalories * 0.35) / 4, 'g', '#a855f7'),
+    createMacroData('Fat', calories?.fat || 0, (targetCalories * 0.20) / 9, 'g', '#eab308'),
+  ];
+
+  const activityStats = (Array.isArray(activitiesTrend) ? activitiesTrend : []).reduce((acc: any, curr: any) => {
+    if (!curr) return acc;
+    const type = curr.activity_type || 'Other';
+    if (!acc[type]) {
+      acc[type] = { name: type, duration: 0, calories: 0 };
+    }
+    const dur = Number(curr.duration);
+    const cal = Number(curr.calories);
+    if (!isNaN(dur)) acc[type].duration += dur * 60;
+    if (!isNaN(cal)) acc[type].calories += cal;
+    return acc;
+  }, {});
+  const activityPieData = Object.values(activityStats);
+  const totalDurationSeconds = activityPieData.reduce((sum: number, item: any) => sum + item.duration, 0);
+  const totalCalories = activityPieData.reduce((sum: number, item: any) => sum + item.calories, 0);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -335,19 +464,19 @@ export default function HealthProfile() {
           </div>
         )}
 
-        {/* Recovery Score Hero */}
-        <div className={`p-6 rounded-xl border-2 ${getRecoveryBg(recoveryScore)}`}>
+        {/* Readiness Hero */}
+        <div className={`p-6 rounded-xl border-2 ${readiness.bg}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Recovery Score</p>
-              <p className={`text-5xl font-bold ${getRecoveryColor(recoveryScore)}`}>
-                {recoveryScore || '--'}
+              <p className="text-sm font-medium text-gray-600 mb-1">Training Readiness</p>
+              <p className={`text-4xl font-bold ${readiness.color}`}>
+                {readiness.title}
               </p>
               <p className="text-sm text-gray-600 mt-2">
-                {recoveryScore >= 70 ? 'Ready for intensity' : recoveryScore >= 50 ? 'Moderate training OK' : recoveryScore > 0 ? 'Recovery day needed' : 'Insufficient data'}
+                {readiness.msg}
               </p>
             </div>
-            <Zap className={`w-20 h-20 ${getRecoveryColor(recoveryScore)} opacity-20`} />
+            <Zap className={`w-20 h-20 ${readiness.color} opacity-20`} />
           </div>
         </div>
 
@@ -402,7 +531,7 @@ export default function HealthProfile() {
                 7 days
               </span>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{distance7days ? distance7days.toFixed(1) : '--'}</p>
+            <p className="text-2xl font-bold text-gray-900">{distance ?? '--'}</p>
             <p className="text-xs text-gray-500">Distance (km)</p>
             <div className="mt-2">
               <Sparkline data={runs} color="#14b8a6" />
@@ -410,18 +539,87 @@ export default function HealthProfile() {
           </div>
         </div>
 
-        {/* Today's Focus - Prominent Callout */}
-        {aiInsight?.today_focus && (
-          <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-6 rounded-xl text-white">
-            <div className="flex items-start gap-3">
-              <Target className="w-6 h-6 mt-1 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium opacity-90 mb-1">Today's Focus</p>
-                <p className="text-xl font-semibold leading-tight">{aiInsight.today_focus}</p>
+        {/* Activity Distribution */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h3 className="font-semibold text-gray-900 mb-6">Activity Distribution (7 Days)</h3>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="flex flex-col items-center">
+              <div className="text-center mb-4">
+                <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Duration</h4>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {Math.floor(totalDurationSeconds / 3600)}h {Math.round((totalDurationSeconds % 3600) / 60)}m
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Avg {Math.round(totalDurationSeconds / 7 / 60)}m / day
+                </p>
+              </div>
+              <div className="h-64 w-full">
+                {activityPieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={activityPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="duration"
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {activityPieData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `${Math.floor(value / 60)}m`} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400 text-sm">No activity data</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="text-center mb-4">
+                <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Calories</h4>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {totalCalories} <span className="text-lg font-normal text-gray-500">kcal</span>
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Avg {Math.round(totalCalories / 7)} kcal / day
+                </p>
+              </div>
+              <div className="h-64 w-full">
+                {activityPieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={activityPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="calories"
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        {activityPieData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400 text-sm">No activity data</div>
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* AI Insights Grid */}
         <div className="grid md:grid-cols-2 gap-6">
@@ -447,38 +645,13 @@ export default function HealthProfile() {
               {aiInsight?.nutrition_plan || 'No nutrition plan available. Sync your data to receive personalized guidance.'}
             </p>
           </div>
-
-          {/* Hydration Target */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Droplets className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Hydration Target</h3>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <p className="text-4xl font-bold text-blue-600">
-                {aiInsight?.hydration_target_l ?? '3.5'}
-              </p>
-              <p className="text-gray-500">liters</p>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">UAE climate adjusted (+0.5L for heat/humidity)</p>
-          </div>
-
-          {/* Motivation */}
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg text-white">
-            <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-5 h-5 text-yellow-400" />
-              <h3 className="font-semibold">Motivation</h3>
-            </div>
-            <p className="text-lg italic leading-relaxed">
-              {aiInsight?.motivation || 'Every step forward is progress. Stay consistent.'}
-            </p>
-          </div>
         </div>
 
         {/* Secondary Metrics */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="font-semibold text-gray-900 mb-4">Additional Metrics</h3>
-          <div className="grid grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg border border-gray-200 h-full">
+          <h3 className="font-semibold text-gray-900 mb-4">Nutrition & Body Composition</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm text-gray-500 mb-1">Weight</p>
               <p className="text-2xl font-semibold text-gray-900">{weight?.value ?? '--'} kg</p>
@@ -488,15 +661,106 @@ export default function HealthProfile() {
               <p className="text-2xl font-semibold text-gray-900">{weight?.bodyfat ?? '--'}%</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-1">Calories (Today)</p>
-              <p className="text-2xl font-semibold text-gray-900">{calories?.today ?? '--'}</p>
-              <div className="mt-2">
-                <Sparkline data={calorieTrend} color="#f59e0b" />
-              </div>
+              <p className="text-sm text-gray-500 mb-1">Lean Mass</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {weight?.value && weight?.bodyfat
+                  ? (weight.value * (1 - weight.bodyfat / 100)).toFixed(1)
+                  : '--'} <span className="text-lg text-gray-500">kg</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={macroData}
+                margin={{ top: 10, right: 30, left: 40, bottom: 5 }}
+                barSize={24}
+              >
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={60} tick={{fontSize: 12, fill: '#6b7280'}} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
+                <Bar dataKey="filled" stackId="a" radius={[4, 0, 0, 4]}>
+                  {macroData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+                <Bar dataKey="remaining" stackId="a" radius={[0, 4, 4, 0]}>
+                  {macroData.map((entry, index) => (
+                    <Cell key={`cell-rem-${index}`} fill={entry.fill} fillOpacity={0.2} />
+                  ))}
+                </Bar>
+                <Bar dataKey="excess" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Calorie Trend Chart */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200 h-full">
+          <h3 className="font-semibold text-gray-900 mb-4">Calorie Consumption Trend (7 Days)</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={caloriesTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{fontSize: 12}} 
+                  tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                />
+                <YAxis />
+                <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                <ReferenceLine y={2000} label="Target (2000)" stroke="#ef4444" strokeDasharray="3 3" />
+                <Line type="monotone" dataKey="calories" stroke="#10b981" strokeWidth={2} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        </div>
+
+        {/* Medical Metrics */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Droplets className="w-5 h-5 text-red-600" />
+            <h3 className="font-semibold text-gray-900">Medical Stats</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Total Cholesterol</p>
+              <p className="text-2xl font-semibold text-gray-900">{medical?.cholesterol ?? '--'} <span className="text-lg text-gray-500">mg/dL</span></p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">LDL Cholesterol</p>
+              <p className="text-2xl font-semibold text-gray-900">{medical?.ldl ?? '--'} <span className="text-lg text-gray-500">mg/dL</span></p>
             </div>
           </div>
         </div>
 
+        {/* Latest Articles */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              <h3 className="font-semibold text-gray-900">Latest Articles</h3>
+            </div>
+            <Link to="/blog" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+              View All <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            {recentPosts.map((post) => (
+              <Link key={post.slug} to={`/blog/${post.slug}`} className="block group">
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50 transition">
+                  <h4 className="font-medium text-gray-900 group-hover:text-blue-700 mb-1">{post.title}</h4>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{post.description}</p>
+                  <span className="text-xs text-gray-400">{post.date}</span>
+                </div>
+              </Link>
+            ))}
+            {recentPosts.length === 0 && <p className="text-gray-500 text-sm">No articles found.</p>}
+          </div>
+        </div>
       </div>
     </div>
   );

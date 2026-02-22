@@ -8,6 +8,7 @@ import WorkDashboard from './work/WorkDashboard'
 import WorkCV from './work/WorkCV'
 import HealthProfile from './health/HealthProfile'
 import SignIn from './health/SignIn'
+import LinkedInPage from './health/LinkedInPage'
 
 const router = createBrowserRouter([
   { path: '/', element: <AppShell />, children: [
@@ -16,7 +17,8 @@ const router = createBrowserRouter([
       { path: 'work-architecture', element: <Architecture /> },
       { path: 'work-cv', element: <WorkCV /> },
       { path: 'health', element: <HealthProfile /> },
-      { path: 'login', element: <SignIn /> }
+      { path: 'login', element: <SignIn /> },
+      { path: 'linkedin', element: <LinkedInPage /> }
   ] }
 ])
 

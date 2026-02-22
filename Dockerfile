@@ -14,6 +14,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Accept VITE_HEALTH_PASS as a build argument
+ARG VITE_HEALTH_PASS
+
+RUN echo "VITE_HEALTH_PASS is: $VITE_HEALTH_PASS"
+
 # Build the React app
 RUN npm run build
 

@@ -1,51 +1,31 @@
-body {
-    font-family: 'Inter', sans-serif, system-ui;
+.infra-card {
+  @apply rounded-lg shadow-md transition-all duration-300;
 }
 
-.flow-stage {
-    @apply p-6 border-2 rounded-xl w-full max-w-lg transition-all duration-300 mx-auto;
-}
-.flow-arrow {
-    @apply text-3xl font-light text-slate-400 my-4;
-}
-.flow-details {
-    display: none;
-}
-.flow-stage.expanded .flow-details {
-    display: block;
+.infra-card:hover {
+  @apply shadow-xl transform -translate-y-1;
 }
 
-/* NEW Architecture Flow Styles */
-.arch-container {
-    @apply bg-white p-6 md:p-10 rounded-xl shadow-2xl border-4 border-indigo-600/30;
-}
-.arch-step-box {
-    @apply p-4 rounded-lg shadow-sm border border-slate-200 min-w-[150px] text-center transition-all duration-200;
-}
-.arch-microservice-group {
-    @apply flex flex-col space-y-3 p-4 border-2 border-dashed border-teal-300 rounded-lg;
-}
-.arch-connector {
-    @apply text-3xl text-slate-400 font-extrabold;
+.card-header {
+  @apply flex items-center gap-3 text-white py-2 px-4 rounded-t-lg font-bold;
 }
 
-/* New Technical Flow Styles */
-.tech-flow-lane {
-    @apply flex-1 p-3 bg-white border-t-4 border-slate-200 rounded-b-lg min-w-[180px] transition-shadow duration-200 hover:shadow-lg;
-}
-.tech-flow-step {
-    @apply bg-indigo-50 p-3 rounded-lg shadow text-sm font-medium text-indigo-700 border border-indigo-200 mb-2;
-}
-.tech-flow-text {
-    @apply text-xs text-slate-600 mt-1;
-}
-.tech-flow-connector {
-    @apply text-2xl font-extrabold text-slate-400 mx-4 flex items-center justify-center;
+.sub-card {
+  @apply bg-slate-50 rounded-lg border-2 transition-shadow hover:shadow-md;
 }
 
-/* Responsive Flow Adjustments */
-@media (max-width: 1024px) {
-    .tech-flow-connector {
-        @apply my-4;
-    }
+.sub-card-header {
+  @apply flex items-center gap-3 font-bold p-3 border-b-2;
+}
+
+.list-item {
+  @apply bg-white border border-slate-200 p-2 rounded-md text-sm flex items-center;
+}
+
+.api-card {
+  @apply bg-slate-50 border-2 rounded-lg p-3 text-center transition-all hover:shadow-lg hover:bg-white;
+}
+
+.api-card-title {
+  @apply font-bold text-xs;
 }

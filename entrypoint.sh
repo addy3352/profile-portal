@@ -36,8 +36,10 @@ if grep -q '$MESH_API_KEY' /etc/nginx/conf.d/default.conf; then
 fi
 
 echo "[entrypoint] ✓ Variable successfully substituted"
-echo "[entrypoint] X-API-KEY header (first 20 chars):"
-grep "proxy_set_header X-API-KEY" /etc/nginx/conf.d/default.conf | sed 's/.*X-API-KEY \(.\{20\}\).*/\1.../'
+
+# Increase proxy timeouts to avoid 504 Gateway Timeouts on slow API calls
+echo "[entrypoint] Increasing Nginx proxy timeouts..."
+sed -i '/server {/a \    proxy_read_timeout 300s;\n    proxy_connect_timeout 300s;\n    proxy_send_timeout 300s;' /etc/nginx/conf.d/default.conf
 
 
 # Test nginx configuration
