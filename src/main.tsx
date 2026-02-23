@@ -9,8 +9,8 @@ import WorkCV from './work/WorkCV'
 import HealthProfile from './health/HealthProfile'
 import SignIn from './health/SignIn'
 import LinkedInPage from './health/LinkedInPage'
-import BlogList from './health/BlogList'
-import BlogPost from './health/BlogPost'
+import BlogList from './blog/BlogList'
+import BlogPost from './blog/BlogPost'
 
 const router = createBrowserRouter([
   { path: '/', element: <AppShell />, children: [
